@@ -58,14 +58,23 @@ def clean_srt_preserve_timing(input_path, output_path):
                 f.write(f"{text_line}\n")
             f.write("\n\n")
 
-def batch_clean_srts(folder_path, output_path):
-    for filename in os.listdir(folder_path):
-        if filename.endswith(".srt") and not filename.endswith(".cleaned.srt"):
-            input_path = os.path.join(folder_path, filename)
+def safe_filename(name):
+    return re.sub(r'[\\/:"*?<>|]+', '_', name)
+
+def batch_clean_srts(input_folder, output_folder):
+    os.makedirs(output_folder, exist_ok=True)
+
+    for filename in os.listdir(input_folder):
+        if filename.endswith(".srt"):
+            input_path = os.path.join(input_folder, filename)
             base, _ = os.path.splitext(filename)
-            output_path = os.path.join(output_path, f"{base}.cleaned.srt")
+            safe_base = safe_filename(base)
+            output_path = os.path.join(output_folder, f"{safe_base}.cleaned.srt")
             print(f"Cleaning: {filename}")
-            clean_srt_preserve_timing(input_path, output_path)
+            try:
+                clean_srt_preserve_timing(input_path, output_path)
+            except Exception as e:
+                print(f"❌ Error cleaning {filename}: {e}")
 
 
 batch_clean_srts("srt_files","enhanced_srt_files" )
