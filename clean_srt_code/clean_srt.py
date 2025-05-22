@@ -22,11 +22,13 @@ def clean_srt_preserve_timing(input_path, output_path):
     cleaned_blocks = []
     previous_text = ""
 
-    def clean_text_lines(text_lines):
+    def clean_text_lines(text_lines, previous_text):
         cleaned_lines = []
         for line in text_lines:
             line_clean = re.sub(r'\[.*?\]', '', line).strip()
-            if line_clean:
+            if line_clean == previous_text:
+                continue
+            elif line_clean:
                 cleaned_lines.append(line_clean)
         return cleaned_lines
 
@@ -37,14 +39,11 @@ def clean_srt_preserve_timing(input_path, output_path):
         time_line = block[1]
         text_lines = block[2:]
 
-        cleaned_text_lines = clean_text_lines(text_lines)
+        cleaned_text_lines = clean_text_lines(text_lines, previous_text)
         if not cleaned_text_lines:
             continue
-
+        
         combined_text = " ".join(cleaned_text_lines).lower()
-
-        if combined_text == previous_text:
-            continue
 
         previous_text = combined_text
         cleaned_blocks.append((time_line, cleaned_text_lines))

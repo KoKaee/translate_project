@@ -83,55 +83,10 @@ def translate_srt_file(input_path, output_path, translator):
 def main():
     print("🚀 Chargement du modèle de traduction...")
     model_name = "Helsinki-NLP/opus-mt-en-fr"
-    print("🚀 Chargement du modèle de traduction...")
-    model_name = "Helsinki-NLP/opus-mt-en-fr"
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
     translator = pipeline("translation", model=model, tokenizer=tokenizer)
-    print("✅ Modèle de traduction chargé.")
-    print("🔍 Recherche de fichiers SRT dans le répertoire courant...")
 
-    folder = os.path.join(os.path.dirname(__file__), "enhanced_srt_files")
-    # Vérifie que le dossier existe
-    if not os.path.isdir(folder):
-        print(f"❌ Dossier introuvable : {folder}")
-        exit()
-
-    # Recherche les fichiers .srt
-    srt_files = glob.glob(os.path.join(folder, "*.srt"))
-
-    if not srt_files:
-        print("❌ Aucun fichier SRT trouvé dans le dossier.")
-        exit()
-
-    print(f"✅ {len(srt_files)} fichier(s) SRT trouvé(s) :")
-    
-    for i, file in enumerate(srt_files, 1):
-        print(f"{i}. {os.path.basename(file)}")
-
-    # Choisir un fichier
-    choice = int(input("Quel fichier voulez-vous traduire ? (numéro) ").strip()) - 1
-
-    if not (0 <= choice < len(srt_files)):
-        print("❌ Numéro invalide.")
-        exit()
-        
-    input_srt = srt_files[choice]
-
-    # Dossier de sortie
-    output_dir = os.path.join(os.path.dirname(__file__), "translated_srt_files")
-    os.makedirs(output_dir, exist_ok=True)
-
-    # Nom de fichier propre
-    base_name = os.path.splitext(os.path.basename(input_srt))[0]
-    safe_base = safe_filename(base_name)
-    output_srt = os.path.join(output_dir, f"{safe_base}_fr.srt")
-
-    print(f"📂 Fichier à traduire : {input_srt}")
-    print(f"📄 Fichier traduit : {input_srt.replace(".srt", "_fr.srt")}")
-    print(f"📂 Dossier de sortie : {output_srt}")
-
-    translate_srt_file(input_srt, output_srt, translator)
     print("✅ Modèle de traduction chargé.")
     print("🔍 Recherche de fichiers SRT dans le répertoire courant...")
 
