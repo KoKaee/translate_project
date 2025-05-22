@@ -34,7 +34,6 @@ def clean_srt_preserve_timing(input_path, output_path):
         if len(block) < 3:
             continue
 
-        index_line = block[0]
         time_line = block[1]
         text_lines = block[2:]
 
