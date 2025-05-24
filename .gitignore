@@ -1,0 +1,10 @@
+#dont include videos in the repo
+videos/
+
+#dont include python cache, log etc
+__pycache__/
+*.pyc
+*.log
+*.tmp
+*.temp
+
