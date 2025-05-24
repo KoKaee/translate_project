@@ -80,7 +80,7 @@ async def transcribe_video(file: UploadFile = File(...)):
 
     try:
         segments, _ = whisper_model.transcribe(
-            temp_path, language="en", task="transcribe", vad_filter=True
+            temp_path, task="transcribe", vad_filter=True
         )
         segments = list(segments)
         srt_text = format_segments_to_srt(segments)

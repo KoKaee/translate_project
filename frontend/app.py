@@ -6,6 +6,7 @@ import logging
 import requests
 from datetime import datetime
 from dotenv import load_dotenv
+import yt_dlp
 
 # Load environment variables
 load_dotenv()
@@ -32,6 +33,36 @@ def check_ffmpeg():
         return True
     except (subprocess.SubprocessError, FileNotFoundError):
         return False
+
+def download_youtube_video(url):
+    """Download video from YouTube URL"""
+    st.info(f"Attempting to download: {url}")
+    try:
+        # Create a temporary directory to save the downloaded video
+        with tempfile.TemporaryDirectory() as temp_dir:
+            ydl_opts = {
+                'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/mp4',
+                'outtmpl': os.path.join(temp_dir, '%(title)s.%(ext)s'),
+                'keepvideo': True, # Keep the video file after processing
+            }
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info_dict = ydl.extract_info(url, download=True)
+                video_filename = ydl.prepare_filename(info_dict)
+
+            # Read the downloaded file
+            with open(video_filename, 'rb') as f:
+                video_data = f.read()
+
+            # Return as BytesIO object to mimic file upload object structure
+            from io import BytesIO
+            video_file_like_object = BytesIO(video_data)
+            video_file_like_object.name = os.path.basename(video_filename) # Add filename attribute
+
+            return video_file_like_object, None
+
+    except Exception as e:
+        logger.error(f"Error downloading YouTube video: {str(e)}")
+        return None, f"Error downloading video: {str(e)}"
 
 def process_video(video_file, quality="medium"):
     """Process video file using FFmpeg"""
@@ -134,18 +165,29 @@ def main():
     
     st.title("🎥 Video Processor")
     
+    # Add a text input for YouTube URL
+    youtube_url = st.text_input("Enter YouTube URL")
+
+    # Add a button to process the YouTube URL
+    process_url_button = st.button("Process YouTube URL")
+
     # Check FFmpeg installation
     if not check_ffmpeg():
         st.error("FFmpeg is not installed. Please install FFmpeg to use this application.")
         st.stop()
-    
+
     # File upload
     uploaded_file = st.file_uploader(
         "Choose a video file",
         type=['mp4', 'avi', 'mov', 'mkv'],
         help="Upload a video file to process"
     )
-    
+
+    # Check if either file upload or URL is being processed
+    if uploaded_file is None and not (process_url_button and youtube_url):
+        st.info("Please upload a video file or enter a YouTube URL to get started.")
+
+    # Only show file upload processing if a file is uploaded
     if uploaded_file is not None:
         # Show video info
         file_size = uploaded_file.size / (1024 * 1024)  # Convert to MB
@@ -225,6 +267,48 @@ def main():
                                 file_name=f"{os.path.splitext(uploaded_file.name)[0]}_commented.mp4",
                                 mime="video/mp4"
                             )
+
+    # Process YouTube URL
+    if process_url_button and youtube_url:
+        st.info("Processing YouTube URL...")
+        with st.spinner("Downloading and transcribing YouTube video..."):
+            video_file_like_object, download_error = download_youtube_video(youtube_url)
+
+            if download_error:
+                st.error(download_error)
+            elif video_file_like_object:
+                # Transcribe the downloaded video
+                result, transcribe_error = transcribe_video(video_file_like_object)
+
+                if transcribe_error:
+                    st.error(transcribe_error)
+                elif result:
+                    # Calculate processing time (assuming this comes back from backend)
+                    process_time = result.get("processing_time", "N/A")
+
+                    # Show success message
+                    st.success(f"Video transcribed successfully (processing time: {process_time} seconds)!")
+
+                    # Display transcription
+                    st.subheader("Transcription")
+                    st.write(result.get("text", "No text available"))
+
+                    # Display segments with timestamps
+                    segments = result.get("segments")
+                    if segments:
+                        st.subheader("Segments")
+                        for segment in segments:
+                            st.write(f"[{segment['start']:.1f}s - {segment['end']:.1f}s] {segment['text']}")
+
+                    # Add download button for SRT
+                    srt_content = result.get("srt")
+                    if srt_content:
+                        st.download_button(
+                            label="Download SRT file",
+                            data=srt_content,
+                            file_name=f"{os.path.splitext(video_file_like_object.name)[0]}.srt",
+                            mime="text/plain"
+                        )
 
 if __name__ == "__main__":
     main() 
