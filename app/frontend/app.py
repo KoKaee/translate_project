@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-# API configuration
+# Get API URL from environment variable
 API_URL = os.getenv("API_URL", "http://localhost:8000")
 
 def main():
@@ -17,104 +17,128 @@ def main():
         page_icon="🎥",
         layout="wide"
     )
-    
+
     st.title("🎥 Video Translation App")
-    
+    st.markdown("""
+    Upload a video to transcribe, enhance, and translate it to Chinese.
+    The app will generate both English and Chinese subtitles.
+    """)
+
     # Language selection
-    target_language = st.selectbox(
+    st.subheader("Target Language")
+    target_lang = st.selectbox(
         "Select target language",
-        ["fr", "es", "de", "it", "pt", "ru", "ja", "ko", "zh-cn"],
-        format_func=lambda x: {
-            "fr": "French",
-            "es": "Spanish",
-            "de": "German",
-            "it": "Italian",
-            "pt": "Portuguese",
-            "ru": "Russian",
-            "ja": "Japanese",
-            "ko": "Korean",
-            "zh-cn": "Chinese (Simplified)"
-        }[x]
+        ["Chinese"],
+        index=0
     )
 
     # File upload
+    st.subheader("Upload Video")
     uploaded_file = st.file_uploader(
         "Choose a video file",
-        type=['mp4', 'avi', 'mov', 'mkv'],
-        help="Upload a video file to process"
+        type=["mp4", "avi", "mov", "mkv"]
     )
 
-    if uploaded_file is None:
-        st.info("Please upload a video file to get started.")
-        return
+    if uploaded_file:
+        # Display file size
+        file_size = len(uploaded_file.getvalue()) / (1024 * 1024)  # Convert to MB
+        st.info(f"File size: {file_size:.2f} MB")
 
-    # Show video info
-    file_size = uploaded_file.size / (1024 * 1024)  # Convert to MB
-    st.info(f"File size: {file_size:.2f} MB")
-    
-    # Process video button
-    if st.button("Process Video"):
-        with st.spinner("Processing video..."):
-            start_time = datetime.now()
-            
-            # Prepare the request
-            files = {'file': uploaded_file}
-            data = {
-                'target_lang': target_language,
-                'create_subtitled_video': False  # We'll handle this separately
-            }
-            
-            try:
-                # Send request to backend
-                response = requests.post(f"{API_URL}/process_video", files=files, data=data)
-                response.raise_for_status()
-                result = response.json()
-                
-                # Calculate processing time
-                process_time = (datetime.now() - start_time).total_seconds()
-                st.success(f"Video processed successfully in {process_time:.2f} seconds!")
-                
-                # Display original and translated SRT
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    st.subheader("Original SRT")
-                    st.text_area("Original subtitles", result['original_srt'], height=300)
-                    st.download_button(
-                        label="Download Original SRT",
-                        data=result['original_srt'],
-                        file_name=f"{os.path.splitext(uploaded_file.name)[0]}_original.srt",
-                        mime="text/plain"
+        # Processing options
+        st.subheader("Processing Options")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            enhance_srt = st.checkbox(
+                "Enhance SRT with AI",
+                help="Use Qwen AI to improve subtitle quality and readability"
+            )
+        
+        with col2:
+            create_subtitled_video = st.checkbox(
+                "Create subtitled video",
+                help="Generate a video with embedded subtitles"
+            )
+
+        # Process button
+        if st.button("Process Video"):
+            with st.spinner("Processing video... This may take a few minutes."):
+                try:
+                    # Prepare files for upload
+                    files = {"file": (uploaded_file.name, uploaded_file.getvalue())}
+                    data = {
+                        "create_subtitled_video": create_subtitled_video,
+                        "enhance_srt": enhance_srt
+                    }
+
+                    # Make API request
+                    response = requests.post(
+                        f"{API_URL}/process_video",
+                        files=files,
+                        data=data
                     )
-                
-                with col2:
-                    st.subheader("Translated SRT")
-                    st.text_area("Translated subtitles", result['translated_srt'], height=300)
-                    st.download_button(
-                        label="Download Translated SRT",
-                        data=result['translated_srt'],
-                        file_name=f"{os.path.splitext(uploaded_file.name)[0]}_{target_language}.srt",
-                        mime="text/plain"
-                    )
-                
-                # Option to create subtitled video
-                if st.button("Create Subtitled Video"):
-                    with st.spinner("Creating subtitled video..."):
-                        # Request subtitled video
-                        data['create_subtitled_video'] = True
-                        response = requests.post(f"{API_URL}/process_video", files=files, data=data)
-                        response.raise_for_status()
+
+                    if response.status_code == 200:
+                        st.success("Video processed successfully!")
+
+                        # Handle subtitled video response
+                        if create_subtitled_video:
+                            # Save the video file
+                            video_data = response.content
+                            video_filename = f"subtitled_video_{datetime.now().strftime('%Y%m%d_%H%M%S')}.mp4"
+                            
+                            with open(video_filename, "wb") as f:
+                                f.write(video_data)
+                            
+                            # Get SRT content from headers
+                            original_srt = response.headers.get("X-Original-SRT", "")
+                            translated_srt = response.headers.get("X-Translated-SRT", "")
+
+                            # Download buttons for video and SRTs
+                            st.download_button(
+                                "Download Subtitled Video",
+                                video_data,
+                                file_name=video_filename,
+                                mime="video/mp4"
+                            )
+                        else:
+                            # Handle JSON response
+                            result = response.json()
+                            original_srt = result["original_srt"]
+                            translated_srt = result["translated_srt"]
+
+                        # Display processing time
+                        if "processing_time" in response.json():
+                            st.info(f"Processing time: {response.json()['processing_time']:.2f} seconds")
+
+                        # Display and download SRTs
+                        col1, col2 = st.columns(2)
                         
-                        # Download button for the subtitled video
-                        st.download_button(
-                            label="Download Subtitled Video",
-                            data=response.content,
-                            file_name=f"{os.path.splitext(uploaded_file.name)[0]}_subtitled.mp4",
-                            mime="video/mp4"
-                        )
-                
-            except requests.exceptions.RequestException as e:
-                st.error(f"Error processing video: {str(e)}")
+                        with col1:
+                            st.subheader("Original SRT")
+                            st.text_area("", original_srt, height=300)
+                            st.download_button(
+                                "Download Original SRT",
+                                original_srt,
+                                file_name="original.srt",
+                                mime="text/plain"
+                            )
+
+                        with col2:
+                            st.subheader("Translated SRT")
+                            st.text_area("", translated_srt, height=300)
+                            st.download_button(
+                                "Download Translated SRT",
+                                translated_srt,
+                                file_name="translated.srt",
+                                mime="text/plain"
+                            )
+
+                    else:
+                        st.error(f"Error: {response.text}")
+
+                except Exception as e:
+                    st.error(f"An error occurred: {str(e)}")
 
 if __name__ == "__main__":
     main() 
