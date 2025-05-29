@@ -1,7 +1,5 @@
 import os
-import glob
 import re
-import torch
 from transformers import M2M100ForConditionalGeneration, M2M100Tokenizer
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
