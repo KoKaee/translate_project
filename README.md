@@ -59,13 +59,3 @@ chapters	List of chapter start/end times (if defined)
 Implement targeted human review for segments flagged as potentially problematic
 Create an efficient interface for reviewers to quickly approve or correct translations
 Develop a feedback mechanism to improve system performance based on corrections
-QA 1
-Q: Hello sir, i wanted to know with my group, how many translated srt do you need and how ? Do you need the translated ones in a doc or not, like just examples in the video and let you try with the initial srt and our code solution
-
-A: Thank you for your question. If you solution is good and scalable, then you can translate as many srt files as possible (in the srt-files folder). After all, it's just python run the code. Things are quite open, for me the key is that I see that you are working (a lot), you are giving your insights and you are trying to bring up viable solutions. I won't check all your srt files, but I will check the video, the github/gitee repo (in that you are working as a team and your code make sense).
-
-As always, take it easy, have fun, work a lot in an enjoyable way, don't try to make a perfect project, but a working one that you are proud of.
-
-It's AI era. Having fun is the most important thing.
-
-A bit of fuzziness/guaussian noise is very welcome, just as in AutoEncoder and Diffusion Model 
