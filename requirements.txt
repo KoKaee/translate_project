@@ -2,12 +2,15 @@
 tokenizers==0.15.0
 torch==2.2.1
 transformers==4.38.2
+sentencepiece==0.1.99
+huggingface_hub==0.16.4
 faster-whisper==0.10.0
-fastapi==0.110.0
+fastapi==0.115.9
 uvicorn==0.27.1
 python-multipart==0.0.9
 ffmpeg-python==0.2.0
 python-dotenv==1.0.1
+llama-cpp-python==0.2.57
 
 # Frontend dependencies
 streamlit==1.32.0
