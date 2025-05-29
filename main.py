@@ -1,6 +1,6 @@
-from translator.clean_srt import enhance
-from translator.video_transcription import translate_srt_file
-from translator.clean_srt_part2 import enhance_using_AI
+from translator.subtitle_splitter import enhance
+from translator.translator import translate_srt_file
+from translator.subtitle_enhancer_ai import enhance_using_AI
 import os
 
 
