@@ -75,3 +75,4 @@ def enhance_using_AI(filename):
 
     with open(input_path, "w", encoding="utf-8") as f:
         f.write(final_srt)
+
