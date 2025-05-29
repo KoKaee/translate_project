@@ -31,11 +31,7 @@ def annotate_blocks(blocks):
             # Preserve empty blocks with marker only
             annotated_text += f"<S{i}>\n"
         else:
-            # Handle short words like "wow", "um", "bou" as standalone
-            if text.lower() in ["wow", "um", "bou"]:
-                annotated_text += f"<S{i}> {text.strip()}\n"
-            else:
-                annotated_text += f"<S{i}> {text.strip()}\n"
+            annotated_text += f"<S{i}> {text.strip()}\n"
     return annotated_text.strip()
 
 def call_llm_for_improvement(annotated_text):
@@ -79,3 +75,4 @@ def enhance_using_AI(filename):
 
     with open(input_path, "w", encoding="utf-8") as f:
         f.write(final_srt)
+

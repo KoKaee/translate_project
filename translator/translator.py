@@ -85,3 +85,4 @@ def translate_srt_file(filename):
         f.write("\n".join(translated_lines))
 
     print(f"Fichier traduit enregistré : {output_path}")
+

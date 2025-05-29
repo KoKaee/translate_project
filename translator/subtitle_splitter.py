@@ -93,3 +93,4 @@ def enhance(input_path):
         split_srt_blocks(input_path, output_path)
     except Exception as e:
         print(f"Error processing {filename}: {e}")
+
