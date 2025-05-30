@@ -19,11 +19,11 @@ logging.basicConfig(
         logging.StreamHandler()
     ]
 )
-
 logger = logging.getLogger(__name__)
 
 # API configuration
 API_URL = os.getenv("API_URL", "http://localhost:8000")
+
 
 def check_ffmpeg():
     """Check if FFmpeg is installed"""
@@ -33,62 +33,32 @@ def check_ffmpeg():
     except (subprocess.SubprocessError, FileNotFoundError):
         return False
 
+
 def process_video(video_file, quality="medium"):
     """Process video file using FFmpeg"""
     try:
-        # Create a temporary directory for processing
         with tempfile.TemporaryDirectory() as temp_dir:
-            # Save uploaded file
             input_path = os.path.join(temp_dir, "input.mp4")
             with open(input_path, "wb") as f:
                 f.write(video_file.getbuffer())
-            
-            # Process video based on quality
             output_path = os.path.join(temp_dir, "output.mp4")
-            
-            # FFmpeg command based on quality
             if quality == "high":
-                ffmpeg_cmd = [
-                    'ffmpeg', '-i', input_path,
-                    '-c:v', 'libx264', '-crf', '18',  # High quality
-                    '-c:a', 'aac', '-b:a', '192k',    # High quality audio
-                    output_path
-                ]
+                ffmpeg_cmd = ['ffmpeg', '-i', input_path, '-c:v', 'libx264', '-crf', '18', '-c:a', 'aac', '-b:a', '192k', output_path]
             elif quality == "medium":
-                ffmpeg_cmd = [
-                    'ffmpeg', '-i', input_path,
-                    '-c:v', 'libx264', '-crf', '23',  # Medium quality
-                    '-c:a', 'aac', '-b:a', '128k',    # Medium quality audio
-                    output_path
-                ]
-            else:  # low
-                ffmpeg_cmd = [
-                    'ffmpeg', '-i', input_path,
-                    '-c:v', 'libx264', '-crf', '28',  # Lower quality
-                    '-c:a', 'aac', '-b:a', '96k',     # Lower quality audio
-                    output_path
-                ]
-            
-            # Run FFmpeg
-            process = subprocess.run(
-                ffmpeg_cmd,
-                capture_output=True,
-                text=True
-            )
-            
+                ffmpeg_cmd = ['ffmpeg', '-i', input_path, '-c:v', 'libx264', '-crf', '23', '-c:a', 'aac', '-b:a', '128k', output_path]
+            else:
+                ffmpeg_cmd = ['ffmpeg', '-i', input_path, '-c:v', 'libx264', '-crf', '28', '-c:a', 'aac', '-b:a', '96k', output_path]
+            process = subprocess.run(ffmpeg_cmd, capture_output=True, text=True)
             if process.returncode != 0:
                 logger.error(f"FFmpeg error: {process.stderr}")
                 return None, f"Error processing video: {process.stderr}"
-            
-            # Read the processed file
             with open(output_path, "rb") as f:
                 processed_video = f.read()
-            
             return processed_video, None
-            
     except Exception as e:
         logger.error(f"Error in process_video: {str(e)}")
         return None, f"Error processing video: {str(e)}"
+
 
 def transcribe_video(video_file):
     """Send video to backend for transcription"""
@@ -101,6 +71,7 @@ def transcribe_video(video_file):
         logger.error(f"Error in transcribe_video: {str(e)}")
         return None, f"Error transcribing video: {str(e)}"
 
+
 def comment_video(video_file, srt_file):
     """Send video and SRT to backend for commenting."""
     try:
@@ -110,20 +81,28 @@ def comment_video(video_file, srt_file):
         }
         response = requests.post(f"{API_URL}/comment_video", files=files, stream=True)
         response.raise_for_status()
-
-        # Handle the video file response
-        # Create a BytesIO object to hold the video data
         from io import BytesIO
         video_data = BytesIO()
         for chunk in response.iter_content(chunk_size=8192):
             video_data.write(chunk)
-        video_data.seek(0) # Go back to the start of the BytesIO object
-
+        video_data.seek(0)
         return video_data.getvalue(), None
-
     except requests.exceptions.RequestException as e:
         logger.error(f"Error in comment_video: {str(e)}")
         return None, f"Error commenting video: {str(e)}"
+
+
+def translate_srt(srt_file):
+    """Send SRT file to backend for translation"""
+    try:
+        files = {"srt_file": (srt_file.name, srt_file, "text/plain")}
+        response = requests.post(f"{API_URL}/translate_srt", files=files, stream=True)
+        response.raise_for_status()
+        return response.content, None
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error in translate_srt: {str(e)}")
+        return None, f"Error translating SRT: {str(e)}"
+
 
 def main():
     st.set_page_config(
@@ -131,100 +110,81 @@ def main():
         page_icon="🎥",
         layout="wide"
     )
-    
     st.title("🎥 Video Processor")
-    
-    # Check FFmpeg installation
     if not check_ffmpeg():
         st.error("FFmpeg is not installed. Please install FFmpeg to use this application.")
         st.stop()
-    
-    # File upload
+
     uploaded_file = st.file_uploader(
         "Choose a video file",
         type=['mp4', 'avi', 'mov', 'mkv'],
         help="Upload a video file to process"
     )
-    
     if uploaded_file is not None:
-        # Show video info
-        file_size = uploaded_file.size / (1024 * 1024)  # Convert to MB
+        file_size = uploaded_file.size / (1024 * 1024)
         st.info(f"File size: {file_size:.2f} MB")
-        
-        # Create tabs for different operations
-        tab1, tab2 = st.tabs(["Get SRT", "Comment Video"])
-        
+        tab1, tab2, tab3 = st.tabs(["Get SRT", "Comment Video", "Translate SRT"])
+
         with tab1:
-            # Transcribe button
             if st.button("Transcribe Video"):
                 with st.spinner("Transcribing video..."):
-                    start_time = datetime.now()
-                    
-                    # Transcribe the video
+                    start = datetime.now()
                     result, error = transcribe_video(uploaded_file)
-                    
                     if error:
                         st.error(error)
                     elif result:
-                        # Calculate processing time
-                        process_time = (datetime.now() - start_time).total_seconds()
-                        
-                        # Show success message
-                        st.success(f"Video transcribed successfully in {process_time:.2f} seconds!")
-                        
-                        # Display transcription
-                        st.subheader("Transcription")
-                        st.write(result.get("text", "No text available"))
-                        
-                        # Display segments with timestamps
-                        segments = result.get("segments")
-                        if segments:
-                            st.subheader("Segments")
-                            for segment in segments:
-                                st.write(f"[{segment['start']:.1f}s - {segment['end']:.1f}s] {segment['text']}")
-
-                        # Add download button for SRT
+                        st.success(f"Transcribed in {(datetime.now()-start).total_seconds():.2f}s")
                         srt_content = result.get("srt")
                         if srt_content:
+                            filename = f"{os.path.splitext(uploaded_file.name)[0]}.srt"
                             st.download_button(
-                                label="Download SRT file",
-                                data=srt_content,
-                                file_name=f"{os.path.splitext(uploaded_file.name)[0]}.srt",
-                                mime="text/plain"
+                                "Download SRT file", srt_content, file_name=filename, mime="text/plain"
                             )
+                        else:
+                            st.warning("No SRT content received.")
 
         with tab2:
             st.subheader("Overlay Subtitles on Video")
-            
-            # SRT file upload
-            uploaded_srt_file = st.file_uploader(
-                "Choose an SRT file",
-                type=['srt'],
-                help="Upload an SRT file to overlay on the video"
+            uploaded_srt = st.file_uploader(
+                "Choose an SRT file to overlay", type=['srt']
             )
-
-            # Comment Video button
-            if st.button("Create Commented Video", disabled=uploaded_srt_file is None):
-                 if uploaded_file is not None and uploaded_srt_file is not None:
+            if st.button("Create Commented Video", disabled=uploaded_srt is None):
+                if uploaded_srt:
                     with st.spinner("Creating commented video..."):
-                        start_time = datetime.now()
-
-                        # Call backend endpoint to comment video
-                        commented_video_data, error = comment_video(uploaded_file, uploaded_srt_file)
-
+                        start = datetime.now()
+                        video_data, error = comment_video(uploaded_file, uploaded_srt)
                         if error:
                             st.error(error)
-                        elif commented_video_data:
-                            process_time = (datetime.now() - start_time).total_seconds()
-                            st.success(f"Commented video created successfully in {process_time:.2f} seconds!")
-
-                            # Add download button for commented video
+                        elif video_data:
+                            st.success(f"Created in {(datetime.now()-start).total_seconds():.2f}s")
                             st.download_button(
-                                label="Download Commented Video",
-                                data=commented_video_data,
+                                "Download Commented Video",
+                                video_data,
                                 file_name=f"{os.path.splitext(uploaded_file.name)[0]}_commented.mp4",
                                 mime="video/mp4"
                             )
 
+        with tab3:
+            st.subheader("Translate SRT to French")
+            st.markdown("Upload an English .srt file to get a French-translated version.")
+            uploaded_srt_tr = st.file_uploader(
+                "Choose an SRT file to translate", type=['srt'], key="translate_srt"
+            )
+            if st.button("Translate SRT", disabled=uploaded_srt_tr is None):
+                if uploaded_srt_tr:
+                    with st.spinner("Translating SRT..."):
+                        translated_data, error = translate_srt(uploaded_srt_tr)
+                        if error:
+                            st.error(error)
+                        elif translated_data:
+                            out_name = f"{os.path.splitext(uploaded_srt_tr.name)[0]}_fr.srt"
+                            st.success("Translation complete!")
+                            st.download_button(
+                                "Download Translated SRT",
+                                translated_data,
+                                file_name=out_name,
+                                mime="text/plain"
+                            )
+
 if __name__ == "__main__":
-    main() 
+    main()
