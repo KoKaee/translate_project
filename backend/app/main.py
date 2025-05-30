@@ -206,7 +206,62 @@ async def translate_srt_endpoint(srt_file: UploadFile = File(...)):
         logger.exception("Error in /translate_srt")
         raise HTTPException(500, "Translation failed")
     finally:
-        # cleanup would happen after response is sent by FileResponse
-        ...
+        try:
+            tmp.close()
+            os.unlink(tmp.name)
+        except:
+            pass
 
-# (comment_video stays unchanged, but you can wrap it similarly)
+@app.post("/comment_video")
+async def comment_video(
+    video_file: UploadFile = File(...),
+    srt_file: UploadFile = File(...)
+):
+    # 1) Create temp dir
+    temp_dir = tempfile.mkdtemp()
+    try:
+        base_name, _ = os.path.splitext(video_file.filename)
+        vid_name = f"{base_name}.mp4"
+        srt_name = f"{base_name}.srt"
+        out_name = f"{base_name}_commented.mp4"
+
+        vid_path = os.path.join(temp_dir, vid_name)
+        srt_path = os.path.join(temp_dir, srt_name)
+        out_path = os.path.join(temp_dir, out_name)
+
+        # Save video
+        with open(vid_path, "wb") as fv:
+            fv.write(await video_file.read())
+        # Save SRT
+        with open(srt_path, "wb") as fs:
+            fs.write(await srt_file.read())
+
+        # 2) Run FFmpeg inside temp_dir, with relative filenames
+        cmd = [
+            "ffmpeg",
+            "-i", vid_name,
+            "-vf", f"subtitles={srt_name}",
+            out_name
+        ]
+        logger.info("Running FFmpeg: %s", " ".join(cmd))
+        proc = subprocess.run(cmd, cwd=temp_dir, capture_output=True, text=True)
+
+        if proc.returncode != 0:
+            logger.error("FFmpeg failed: %s", proc.stderr)
+            raise HTTPException(status_code=500, detail=f"FFmpeg error:\n{proc.stderr}")
+
+        # 3) Verify output exists
+        if not os.path.isfile(out_path):
+            logger.error("Expected output not found, dir contents: %s", os.listdir(temp_dir))
+            raise HTTPException(500, detail="FFmpeg did not produce output file")
+
+        # 4) Return the burned-in video
+        return FileResponse(
+            path=out_path,
+            filename=out_name,
+            media_type="video/mp4"
+        )
+
+    finally:
+        shutil.rmtree(temp_dir, ignore_errors=True)
+        logger.debug(f"Removed temp dir {temp_dir}")
