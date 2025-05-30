@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+torch
+faster-whisper
+transformers
+llama_cpp
+python-dotenv
+streamlit
+requests
