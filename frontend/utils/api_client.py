@@ -10,11 +10,7 @@ load_dotenv()
 API_BASE_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:8000/")
 
 def upload_video(video_file, quality, language):
-    """
-    Upload video file to backend with chunked transfer
-    """
     try:
-        # Prepare the files and data for the request
         files = {
             'file': ('video.mp4', video_file, 'video/mp4')
         }
@@ -22,8 +18,7 @@ def upload_video(video_file, quality, language):
             'quality': quality,
             'language': language
         }
-        
-        # Configure session with retry strategy
+
         session = requests.Session()
         retry_strategy = requests.adapters.Retry(
             total=3,
@@ -33,27 +28,22 @@ def upload_video(video_file, quality, language):
         adapter = requests.adapters.HTTPAdapter(max_retries=retry_strategy)
         session.mount("http://", adapter)
         session.mount("https://", adapter)
-        
-        # Make the request with increased timeout and chunked transfer
+
         response = session.post(
             f"{API_BASE_URL}/video/upload",
             files=files,
             data=data,
-            timeout=(30, 600),  # (connect timeout, read timeout)
-            stream=True  # Enable chunked transfer
+            timeout=(30, 600),
+            stream=True
         )
-        
-        # Check if the request was successful
+
         response.raise_for_status()
         return response.json()
-        
+
     except requests.exceptions.RequestException as e:
         return {"error": f"Error uploading video: {str(e)}"}
 
 def get_processing_status(video_id):
-    """
-    Mock function to simulate processing status
-    """
     return {
         "stage": "completed",
         "progress": 100,
@@ -61,21 +51,39 @@ def get_processing_status(video_id):
     }
 
 def get_srt_content(video_id):
-    """
-    Get SRT content for a video with retry logic
-    """
     max_retries = 3
-    retry_delay = 2  # seconds
+    retry_delay = 2
     
     for attempt in range(max_retries):
         try:
             response = requests.get(
                 f"{API_BASE_URL}/srt/{video_id}",
-                timeout=(30, 60)  # (connect timeout, read timeout)
+                timeout=(30, 60)
             )
             response.raise_for_status()
             return response.text
         except requests.exceptions.RequestException as e:
-            if attempt == max_retries - 1:  # Last attempt
+            if attempt == max_retries - 1:
                 return {"error": f"Error getting SRT content: {str(e)}"}
-            time.sleep(retry_delay * (attempt + 1))  # Exponential backoff 
+            time.sleep(retry_delay * (attempt + 1))
+
+# ✅ New function to call /translate_srt
+def translate_srt(srt_file, target_language="fr"):
+    try:
+        files = {
+            'file': ('subtitle.srt', srt_file, 'application/x-subrip')
+        }
+        data = {
+            'target_language': target_language
+        }
+        response = requests.post(
+            f"{API_BASE_URL}/translate_srt",
+            files=files,
+            data=data,
+            timeout=(30, 300),
+            stream=True
+        )
+        response.raise_for_status()
+        return response.text  # or .content if binary
+    except requests.exceptions.RequestException as e:
+        return {"error": f"Error translating SRT: {str(e)}"}
