@@ -115,17 +115,13 @@ def main():
         st.error("FFmpeg is not installed. Please install FFmpeg to use this application.")
         st.stop()
 
-    uploaded_file = st.file_uploader(
-        "Choose a video file",
-        type=['mp4', 'avi', 'mov', 'mkv'],
-        help="Upload a video file to process"
-    )
-    if uploaded_file is not None:
-        file_size = uploaded_file.size / (1024 * 1024)
-        st.info(f"File size: {file_size:.2f} MB")
-        tab1, tab2, tab3 = st.tabs(["Get SRT", "Comment Video", "Translate SRT"])
+    tab1, tab2, tab3 = st.tabs(["Get SRT", "Comment Video", "Translate SRT"])
 
-        with tab1:
+    with tab1:
+        st.subheader("🎙️ Transcribe Video to SRT")
+        uploaded_file = st.file_uploader("Upload a video file", type=["mp4", "avi", "mov", "mkv"], key="srt_upload")
+        if uploaded_file:
+            st.info(f"File size: {uploaded_file.size / (1024 * 1024):.2f} MB")
             if st.button("Transcribe Video"):
                 with st.spinner("Transcribing video..."):
                     start = datetime.now()
@@ -137,54 +133,50 @@ def main():
                         srt_content = result.get("srt")
                         if srt_content:
                             filename = f"{os.path.splitext(uploaded_file.name)[0]}.srt"
-                            st.download_button(
-                                "Download SRT file", srt_content, file_name=filename, mime="text/plain"
-                            )
+                            st.download_button("Download SRT file", srt_content, file_name=filename, mime="text/plain")
                         else:
                             st.warning("No SRT content received.")
+        else:
+            st.info("Upload a video to enable transcription.")
 
-        with tab2:
-            st.subheader("Overlay Subtitles on Video")
-            uploaded_srt = st.file_uploader(
-                "Choose an SRT file to overlay", type=['srt']
-            )
-            if st.button("Create Commented Video", disabled=uploaded_srt is None):
-                if uploaded_srt:
-                    with st.spinner("Creating commented video..."):
-                        start = datetime.now()
-                        video_data, error = comment_video(uploaded_file, uploaded_srt)
-                        if error:
-                            st.error(error)
-                        elif video_data:
-                            st.success(f"Created in {(datetime.now()-start).total_seconds():.2f}s")
-                            st.download_button(
-                                "Download Commented Video",
-                                video_data,
-                                file_name=f"{os.path.splitext(uploaded_file.name)[0]}_commented.mp4",
-                                mime="video/mp4"
-                            )
+    with tab2:
+        st.subheader("💬 Overlay Subtitles on Video")
+        uploaded_video = st.file_uploader("Upload a video file", type=["mp4", "avi", "mov", "mkv"], key="comment_video")
+        uploaded_srt = st.file_uploader("Upload an SRT file", type=["srt"], key="comment_srt")
+        if st.button("Create Commented Video", disabled=not uploaded_video or not uploaded_srt):
+            if uploaded_video and uploaded_srt:
+                with st.spinner("Creating commented video..."):
+                    start = datetime.now()
+                    video_data, error = comment_video(uploaded_video, uploaded_srt)
+                    if error:
+                        st.error(error)
+                    elif video_data:
+                        st.success(f"Created in {(datetime.now()-start).total_seconds():.2f}s")
+                        st.download_button("Download Commented Video",
+                                           video_data,
+                                           file_name=f"{os.path.splitext(uploaded_video.name)[0]}_commented.mp4",
+                                           mime="video/mp4")
+            else:
+                st.warning("Please upload both a video and an SRT file.")
 
-        with tab3:
-            st.subheader("Translate SRT to French")
-            st.markdown("Upload an English .srt file to get a French-translated version.")
-            uploaded_srt_tr = st.file_uploader(
-                "Choose an SRT file to translate", type=['srt'], key="translate_srt"
-            )
-            if st.button("Translate SRT", disabled=uploaded_srt_tr is None):
-                if uploaded_srt_tr:
-                    with st.spinner("Translating SRT..."):
-                        translated_data, error = translate_srt(uploaded_srt_tr)
-                        if error:
-                            st.error(error)
-                        elif translated_data:
-                            out_name = f"{os.path.splitext(uploaded_srt_tr.name)[0]}_fr.srt"
-                            st.success("Translation complete!")
-                            st.download_button(
-                                "Download Translated SRT",
-                                translated_data,
-                                file_name=out_name,
-                                mime="text/plain"
-                            )
+    with tab3:
+        st.subheader("🌍 Translate SRT to French")
+        uploaded_srt_tr = st.file_uploader("Upload an English .srt file", type=["srt"], key="translate_srt")
+        if st.button("Translate SRT", disabled=not uploaded_srt_tr):
+            if uploaded_srt_tr:
+                with st.spinner("Translating SRT..."):
+                    translated_data, error = translate_srt(uploaded_srt_tr)
+                    if error:
+                        st.error(error)
+                    elif translated_data:
+                        out_name = f"{os.path.splitext(uploaded_srt_tr.name)[0]}_fr.srt"
+                        st.success("Translation complete!")
+                        st.download_button("Download Translated SRT",
+                                           translated_data,
+                                           file_name=out_name,
+                                           mime="text/plain")
+            else:
+                st.warning("Please upload an SRT file to translate.")
 
 if __name__ == "__main__":
     main()
