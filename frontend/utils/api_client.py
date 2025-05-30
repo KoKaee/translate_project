@@ -67,11 +67,11 @@ def get_srt_content(video_id):
                 return {"error": f"Error getting SRT content: {str(e)}"}
             time.sleep(retry_delay * (attempt + 1))
 
-# ✅ New function to call /translate_srt
+# ✅ Updated function to call /translate_srt
 def translate_srt(srt_file, target_language="fr"):
     try:
         files = {
-            'file': ('subtitle.srt', srt_file, 'application/x-subrip')
+            'srt_file': (srt_file.name, srt_file, 'application/x-subrip')
         }
         data = {
             'target_language': target_language
@@ -84,6 +84,6 @@ def translate_srt(srt_file, target_language="fr"):
             stream=True
         )
         response.raise_for_status()
-        return response.text  # or .content if binary
+        return response.text  # returns the translated SRT as a string
     except requests.exceptions.RequestException as e:
         return {"error": f"Error translating SRT: {str(e)}"}
