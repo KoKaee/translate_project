@@ -65,6 +65,8 @@ project-root/
 ### Dear Teacher...
 ____
  
-***I have successfully completed the project as per the requirements. However, we encountered some challenges during the integration of the subtitle splitting and enhancement functionalities into the Streamlit application.***
+***We tried our best to completed the project as per the requirements. However, we encountered some challenges during the integration of the subtitle splitting and enhancement functionalities into the Streamlit application.***
 
 ***The files located in the translator folder, including subtitle_enhancer_ai.py and subtitle_splitter.py , are functioning correctly when executed locally. However, while integrating these functionalities into the Streamlit application, some challenges were encountered, particularly with the SRT splitting and enhancement processes. Despite these issues in the Streamlit environment, the scripts perform as expected in a local setup.***
+
+** Anyways, we had fun doing this project. Thanks ! **
