@@ -19,6 +19,8 @@ project-root/
 │   └── utils/
 │       └── api_client.py
 ├── srt_files/
+├── enhanced_srt_files/
+├── translated_srt_files/
 └── translator/
     ├── model/
     │   └── mistral-7b-instruct-v0.2.Q4_K_M.
